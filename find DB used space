@@ -1,0 +1,52 @@
+how to find Database space used ?
+SID=sid
+user=appdba
+pass=pass123
+SCHEMA=mydbtable
+
+
+SQL << EOF
+SELECT percent_space_used FROM v\$recovery_area_usage where file_type like 'ARCHIVED LOG%';
+EOF
+
+SQL > tabs << EOF
+
+SET LINESIZE 200
+SET PAGESIZE 1000
+SET TRIMOUT ON
+SET FEEDBACK OFF
+SET HEADING OFF
+SET SERVEROUTPUT OFF
+
+
+SELECT 
+CASE
+WHEN percent_space_used BETWEEN 90 AND 95 THEN 'WARNING'
+END as PER_USED,
+CASE
+WHEN percent_space_used > 95 THEN 'CRITICAL'
+END as PER_USED,
+CASE
+WHEN percent_space_used < 90 THEN 'IGNORE'
+END as PER_USED
+FROM v\$recovery_area_usage where file_type like 'ARCHIVED LOG%';
+
+EXIT
+EOF
+
+
+
+
+
+DISK_FILE='/path/local/file'
+if grep -q 'WARNING' "$DISK_FILE"; ##note the space after the string you are searching for
+then
+ctmshout -USER ECS -MESSAGE "WARNING: ControlM DB Space exceeds 90%, Escalate to DBA" -SEVERITY u
+echo "It's WARNING : Monitor and Escalate to DBA"
+elif grep -q 'CRITICAL' "$DISK_FILE"; ##note the space after the string you are searching for
+then
+ctmshout -USER ECS -MESSAGE "CRITICAL: ControlM DB Space exceeds 95%, Escalate to DBA" -SEVERITY v
+echo "It's CRITICAL Escalate to DBA"
+else
+echo "IGNORE : Space is Available"
+fi
